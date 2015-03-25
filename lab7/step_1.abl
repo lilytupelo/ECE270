@@ -1,0 +1,20 @@
+MODULE step_1
+
+TITLE 'this is step 1'
+
+DECLARATIONS
+
+I0,I1,I2,I3,I4,I5,I6,I7 pin 2..9;
+!A,!B,!C,!D,!E,!F,!G,!DP pin 14..21 istype 'com';
+
+EQUATIONS
+A = I0;
+B = I1;
+C = I2;
+D = I3;
+E = I4;
+F = I5;
+G = I6;
+DP = I7;
+END 
+

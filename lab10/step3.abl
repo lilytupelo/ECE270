@@ -1,0 +1,244 @@
+MODULE step3
+
+TITLE 'Le state machine implementation'
+
+LIBRARY 'lattice';
+DECLARATIONS
+
+"internal oscilator
+osc_dis, osc_rst, osc_out, tmr_out node istype 'com';
+" Use maximum possible internal divisor -> yields approx 4 Hz output frequency
+
+XLAT_OSCTIMER(DYNOSCDIS, TIMERRES, OSCOUT, TIMEROUT, 1048576);
+
+" 7-segment common-anode displays (active low outputs)
+" Right-most display (DIS1)
+
+!DIS1a pin 87 istype 'com';	"IO_L6
+!DIS1b pin 86 istype 'com';	"IO_L8
+!DIS1c pin 85 istype 'com';	"IO_L10
+!DIS1d pin 84 istype 'com';	"IO_L12
+!DIS1e pin 83 istype 'com';	"IO_L14
+!DIS1f pin 81 istype 'com';	"IO_K2
+!DIS1g pin 80 istype 'com';	"IO_K4
+
+DIS1 = [DIS1a, DIS1b, DIS1c, DIS1d, DIS1e, DIS1f, DIS1g];
+
+" Second-from-right display (DIS2)
+
+!DIS2a pin 98 istype 'com';	"IO_M12
+!DIS2b pin 97 istype 'com';	"IO_M10
+!DIS2c pin 96 istype 'com';	"IO_M8
+!DIS2d pin 95 istype 'com';	"IO_M6
+!DIS2e pin 94 istype 'com';	"IO_M4
+!DIS2f pin 93 istype 'com';	"IO_M2
+!DIS2g pin 88 istype 'com';	"IO_L4
+
+DIS2 = [DIS2a, DIS2b, DIS2c, DIS2d, DIS2e, DIS2f, DIS2g];
+
+" Second-from-left display (DIS3)
+
+!DIS3a pin 125 istype 'com';	"IO_P2
+!DIS3b pin 124 istype 'com';	"IO_P4
+!DIS3c pin 123 istype 'com';	"IO_P6
+!DIS3d pin 122 istype 'com';  "IO_P8
+!DIS3e pin 121 istype 'com';	"IO_P10
+!DIS3f pin 120 istype 'com';	"IO_P12
+!DIS3g pin 116 istype 'com';	"IO_O2
+
+DIS3 = [DIS3a, DIS3b, DIS3c, DIS3d, DIS3e, DIS3f, DIS3g];
+
+" Left-most display (DIS4)
+
+!DIS4a pin 44 istype 'com';	"IO_G2
+!DIS4b pin 48 istype 'com';	"IO_H12
+!DIS4c pin 49 istype 'com';	"IO_H10
+!DIS4d pin 50 istype 'com';	"IO_H8
+!DIS4e pin 51 istype 'com';	"IO_H6
+!DIS4f pin 52 istype 'com'; 	"IO_H4
+!DIS4g pin 53 istype 'com';	"IO_H2
+
+DIS4 = [DIS4a, DIS4b, DIS4c, DIS4d, DIS4e, DIS4f, DIS4g];
+
+
+timdiv2 node istype 'reg_d,buffer'; "Oscilator divided by 2 = 4Hz
+timdiv4 node istype 'reg_d,buffer'; "Oscilator divided by 4 = 1Hz
+
+
+!LED28 pin 63 istype 'com';	"IO_I12  right
+
+blank = [0,0,0,0,0,0,0];
+charA = [1,1,1,0,1,1,1];  " A
+charB = [0,0,1,1,1,1,1];  " b
+charD = [0,1,1,1,1,0,1];  " d
+charE = [1,0,0,1,1,1,1];  " E
+charG = [1,1,1,1,0,1,1];  " g
+charI = [0,0,1,0,0,0,0];  " i
+charL = [0,0,0,1,1,1,0];  " L
+charN = [0,0,1,0,1,0,1];  " n
+charO = [0,0,1,1,1,0,1];  " o
+charP = [1,1,0,0,1,1,1];  " P
+charR = [0,0,0,0,1,0,1];  " r
+charS = [1,0,1,1,0,1,1];  " S
+charU = [0,1,1,1,1,1,0];  " U
+
+R0..R6 node istype 'reg';
+SH1 = [R0..R6];
+
+RM0..RM6 node istype 'reg';
+SH2 = [RM0..RM6];
+
+LM0..LM6 node istype 'reg';
+SH3 = [LM0..LM6];
+
+L0..L6 node istype 'reg';
+SH4 = [L0..L6];
+
+SHALL = [SH1,SH2,SH3,SH4];
+DSALL = [DIS1,DIS2,DIS3,DIS4];
+
+DIP0 pin 79;	"IO_K6
+DIP1 pin 78;	"IO_K8
+DIP2 pin 77;	"IO_K10
+DIP3 pin 76;	"IO_K12
+DIP4 pin 23;	"IO_E6
+DIP5 pin 24;	"IO_E8
+DIP6 pin 25;	"IO_E10
+DIP7 pin 26;	"IO_E12
+
+DIP = [DIP7, DIP6, DIP5, DIP4, DIP3, DIP2, DIP1, DIP0];
+WORD_DIP = [DIP6, DIP5, DIP4, DIP3, DIP2, DIP1, DIP0];
+
+M1 = DIP1;
+M0 = DIP0;
+M = [M1,M0];
+
+LET0..LET5 node istype 'reg';
+MASHEEN = [LET0..LET5];
+
+c0..c6 node istype 'reg';
+char = [c0..c6];
+
+X = .X.;
+
+EQUATIONS
+osc_dis = 0;
+osc_rst = 0;
+
+I1 OSCTIMER(osc_dis, osc_rst, osc_out, tmr_out);
+
+timdiv2.clk = tmr_out;
+timdiv2 := !timdiv2; 
+
+timdiv4.clk = timdiv2;
+timdiv4 := !timdiv4; 
+
+LED28 = timdiv4;
+
+SH4 := SH3;
+SH3 := SH2;
+SH2 := SH1;
+SH1 := char;
+
+SHALL.CLK = timdiv4;
+SHALL.AR = DIP7;
+
+MASHEEN.CLK = timdiv4;
+MASHEEN.AR = DIP7;
+char.CLK = timdiv4;
+char.AR = DIP7;
+
+DSALL = SHALL;
+
+TRUTH_TABLE([MASHEEN,M1,M0]:>[MASHEEN, char])
+	[0,0,0]:>[1,charG];
+	[0,0,1]:>[10,charN];
+	[0,1,0]:>[15,charB];
+	[0,1,1]:>[24,charR];
+	[1,0,0]:>[2,charO];
+	[1,1,X]:>[0,blank];
+	[1,0,1]:>[0,blank];
+	[2,0,0]:>[3,blank];
+	[2,1,X]:>[0,blank];
+	[2,0,1]:>[0,blank];
+	[3,0,0]:>[4,charP];
+	[3,1,X]:>[0,blank];
+	[3,0,1]:>[0,blank];
+	[4,0,0]:>[5,charU];
+	[4,1,X]:>[0,blank];
+	[4,0,1]:>[0,blank];
+	[5,0,0]:>[6,charR];
+	[5,1,X]:>[0,blank];
+	[5,0,1]:>[0,blank];
+	[6,0,0]:>[7,charD];
+	[6,1,X]:>[0,blank];
+	[6,0,1]:>[0,blank];
+	[7,0,0]:>[8,charU];
+	[7,1,X]:>[0,blank];
+	[7,0,1]:>[0,blank];
+	[8,0,0]:>[9,charE];
+	[8,1,X]:>[0,blank];
+	[8,0,1]:>[0,blank];
+	[9,X,X]:>[0,blank];
+	[10,0,1]:>[11,charO];
+	[10,1,X]:>[0,blank];
+	[10,0,0]:>[0,blank];
+	[11,0,1]:>[12,charI];
+	[11,1,X]:>[0,blank];
+	[11,0,0]:>[0,blank];
+	[12,0,1]:>[13,charS];
+	[12,1,X]:>[0,blank];
+	[12,0,0]:>[0,blank];
+	[13,0,1]:>[14,charE];
+	[13,1,X]:>[0,blank];
+	[13,0,0]:>[0,blank];
+	[14,X,X]:>[0,blank];
+	[15,1,0]:>[16,charO];
+	[15,X,1]:>[0,blank];
+	[15,0,X]:>[0,blank];
+	[16,1,0]:>[17,charI];
+	[16,X,1]:>[0,blank];
+	[16,0,X]:>[0,blank];
+	[17,1,0]:>[18,charL];
+	[17,X,1]:>[0,blank];
+	[17,0,X]:>[0,blank];
+	[18,1,0]:>[19,charE];
+	[18,X,1]:>[0,blank];
+	[18,0,X]:>[0,blank];
+	[19,1,0]:>[20,charR];
+	[19,X,1]:>[0,blank];
+	[19,0,X]:>[0,blank];
+	[20,1,0]:>[21,blank];
+	[20,X,1]:>[0,blank];
+	[20,0,X]:>[0,blank];
+	[21,1,0]:>[22,charU];
+	[21,X,1]:>[0,blank];
+	[21,0,X]:>[0,blank];
+	[22,1,0]:>[23,charP];
+	[22,X,1]:>[0,blank];
+	[22,0,X]:>[0,blank];
+	[23,X,X]:>[0,blank];
+	[24,1,1]:>[25,charA];
+	[24,0,X]:>[0,blank];
+	[24,X,0]:>[0,blank];
+	[25,1,1]:>[26,charU];
+	[25,0,X]:>[0,blank];
+	[25,X,0]:>[0,blank];
+	[26,1,1]:>[27,charL];
+	[26,0,X]:>[0,blank];
+	[26,X,0]:>[0,blank];
+	[27,1,1]:>[28,blank];
+	[27,0,X]:>[0,blank];
+	[27,X,0]:>[0,blank];
+	[28,1,1]:>[29,charB];
+	[28,0,X]:>[0,blank];
+	[28,X,0]:>[0,blank];
+	[29,1,1]:>[30,charI];
+	[29,0,X]:>[0,blank];
+	[29,X,0]:>[0,blank];
+	[30,1,1]:>[31,charG];
+	[30,0,X]:>[0,blank];
+	[30,X,0]:>[0,blank];
+	[31,X,X]:>[0,blank];
+END
+
